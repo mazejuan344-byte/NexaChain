@@ -46,6 +46,10 @@ export default function ProfilePage() {
       setEditing(false)
       alert('Profile updated successfully')
     } catch (error: any) {
+      if (error.response?.status === 413) {
+        alert('Uploaded images are too large. Please choose smaller images and try again.')
+        return
+      }
       alert(error.response?.data?.message || 'Failed to update profile')
     }
   }
