@@ -9,19 +9,24 @@ export default function AdminUsersPage() {
   const { mobileMenuOpen, toggleMobileMenu } = useAuthStore()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<any>(null)
   const [idPreviewUser, setIdPreviewUser] = useState<any>(null)
+  const [idPreviewLoading, setIdPreviewLoading] = useState(false)
 
   useEffect(() => {
     fetchUsers()
   }, [])
 
   const fetchUsers = async () => {
+    setLoadError(null)
     try {
       const response = await api.get('/admin/users')
-      setUsers(response.data.users)
-    } catch (error) {
+      setUsers(Array.isArray(response.data.users) ? response.data.users : [])
+    } catch (error: any) {
       console.error('Failed to fetch users:', error)
+      setUsers([])
+      setLoadError(error.response?.data?.message || 'Failed to load users. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -33,6 +38,26 @@ export default function AdminUsersPage() {
       fetchUsers()
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to update user')
+    }
+  }
+
+  const openIdPreview = async (userId: number) => {
+    const summary = users.find((u) => u.id === userId)
+    setIdPreviewUser({
+      id: userId,
+      email: summary?.email || '',
+      id_front_image: null,
+      id_back_image: null
+    })
+    setIdPreviewLoading(true)
+    try {
+      const response = await api.get(`/admin/users/${userId}`)
+      setIdPreviewUser(response.data.user)
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to load ID images')
+      setIdPreviewUser(null)
+    } finally {
+      setIdPreviewLoading(false)
     }
   }
 
@@ -75,6 +100,12 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+          {loadError}
+        </div>
+      )}
 
       <div className="card-modern overflow-hidden">
         <div className="overflow-x-auto -mx-6 sm:mx-0">
@@ -155,9 +186,13 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4">
-                      {user.id_front_image || user.id_back_image ? (
+                      {user.has_id_front ||
+                      user.has_id_back ||
+                      user.id_front_image ||
+                      user.id_back_image ? (
                         <button
-                          onClick={() => setIdPreviewUser(user)}
+                          type="button"
+                          onClick={() => openIdPreview(user.id)}
                           className="inline-flex items-center gap-2 px-3 py-2 text-xs sm:text-sm rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:opacity-90 transition-opacity"
                         >
                           <FiImage className="w-4 h-4" />
@@ -199,34 +234,44 @@ export default function AdminUsersPage() {
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{idPreviewUser.email}</p>
               </div>
               <button
-                onClick={() => setIdPreviewUser(null)}
+                type="button"
+                onClick={() => {
+                  setIdPreviewUser(null)
+                  setIdPreviewLoading(false)
+                }}
                 className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
                 <FiX className="w-5 h-5 text-neutral-800 dark:text-neutral-200" />
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Front</p>
-                {idPreviewUser.id_front_image ? (
-                  <img src={idPreviewUser.id_front_image} alt="User ID front" className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700" />
-                ) : (
-                  <div className="h-44 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
-                    Not uploaded
-                  </div>
-                )}
+            {idPreviewLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-10 h-10 border-4 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Back</p>
-                {idPreviewUser.id_back_image ? (
-                  <img src={idPreviewUser.id_back_image} alt="User ID back" className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700" />
-                ) : (
-                  <div className="h-44 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
-                    Not uploaded
-                  </div>
-                )}
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Front</p>
+                  {idPreviewUser.id_front_image ? (
+                    <img src={idPreviewUser.id_front_image} alt="User ID front" className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700" />
+                  ) : (
+                    <div className="h-44 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
+                      Not uploaded
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Back</p>
+                  {idPreviewUser.id_back_image ? (
+                    <img src={idPreviewUser.id_back_image} alt="User ID back" className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700" />
+                  ) : (
+                    <div className="h-44 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
+                      Not uploaded
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
