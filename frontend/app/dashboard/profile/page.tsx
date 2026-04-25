@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    profileImage: '',
     idFrontImage: '',
     idBackImage: ''
   })
@@ -28,6 +29,7 @@ export default function ProfilePage() {
       setFormData({
         firstName: user.first_name || '',
         lastName: user.last_name || '',
+        profileImage: user.profile_image || '',
         idFrontImage: user.id_front_image || '',
         idBackImage: user.id_back_image || ''
       })
@@ -65,7 +67,7 @@ export default function ProfilePage() {
       return
     }
 
-    compressImage(file)
+    compressImage(file, { maxWidth: 1200, quality: 0.75, maxLength: 2.5 * 1024 * 1024 })
       .then((compressedImage) => {
         setFormData((prev) => ({
           ...prev,
@@ -77,14 +79,40 @@ export default function ProfilePage() {
       })
   }
 
-  const compressImage = (file: File): Promise<string> => {
+  const handleProfileImageChange = (file?: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be 5MB or less')
+      return
+    }
+
+    compressImage(file, { maxWidth: 600, quality: 0.8, maxLength: 1.2 * 1024 * 1024 })
+      .then((compressedImage) => {
+        setFormData((prev) => ({
+          ...prev,
+          profileImage: compressedImage
+        }))
+      })
+      .catch(() => {
+        alert('Failed to process image. Please try another file.')
+      })
+  }
+
+  const compressImage = (
+    file: File,
+    options: { maxWidth: number; quality: number; maxLength: number }
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => {
         const image = new Image()
         image.onload = () => {
           const canvas = document.createElement('canvas')
-          const maxWidth = 1200
+          const maxWidth = options.maxWidth
           const scale = image.width > maxWidth ? maxWidth / image.width : 1
           canvas.width = Math.round(image.width * scale)
           canvas.height = Math.round(image.height * scale)
@@ -96,10 +124,10 @@ export default function ProfilePage() {
           }
 
           context.drawImage(image, 0, 0, canvas.width, canvas.height)
-          const compressed = canvas.toDataURL('image/jpeg', 0.75)
+          const compressed = canvas.toDataURL('image/jpeg', options.quality)
 
           // Keep each encoded image reasonably small for hosted API limits.
-          if (compressed.length > 2.5 * 1024 * 1024) {
+          if (compressed.length > options.maxLength) {
             reject(new Error('Compressed image too large'))
             return
           }
@@ -150,9 +178,38 @@ export default function ProfilePage() {
       >
         <div className="bg-gradient-trust h-32 -m-6 mb-6"></div>
         <div className="relative -mt-16 mb-6">
-          <div className="w-24 h-24 bg-gradient-trust rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-blue-500/30 border-4 border-white dark:border-neutral-900 mx-auto">
-            {profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-          </div>
+          {editing ? (
+            <div className="relative mx-auto w-24 h-24">
+              <input
+                id="profile-image-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleProfileImageChange(e.target.files?.[0])}
+                className="hidden"
+              />
+              <label
+                htmlFor="profile-image-upload"
+                className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-blue-500/30 border-4 border-white dark:border-neutral-900 mx-auto overflow-hidden cursor-pointer bg-gradient-trust relative group"
+              >
+                {formData.profileImage ? (
+                  <img src={formData.profileImage} alt="Profile preview" className="h-full w-full object-cover" />
+                ) : (
+                  <span>{profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}</span>
+                )}
+                <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium px-2 text-center">
+                  Change photo
+                </div>
+              </label>
+            </div>
+          ) : (
+            <div className="w-24 h-24 bg-gradient-trust rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-blue-500/30 border-4 border-white dark:border-neutral-900 mx-auto overflow-hidden">
+              {profile?.profile_image ? (
+                <img src={profile.profile_image} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <span>{profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-1">
@@ -320,37 +377,6 @@ export default function ProfilePage() {
                       <span className="capitalize">{profile?.kyc_status || 'pending'}</span>
                     </span>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <FiImage className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="text-sm text-neutral-600 dark:text-neutral-400">Uploaded ID Images</div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Front</div>
-                  {profile?.id_front_image ? (
-                    <img src={profile.id_front_image} alt="Uploaded ID front" className="h-36 w-full object-cover rounded-xl border border-neutral-200 dark:border-neutral-700" />
-                  ) : (
-                    <div className="h-36 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
-                      Not uploaded
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Back</div>
-                  {profile?.id_back_image ? (
-                    <img src={profile.id_back_image} alt="Uploaded ID back" className="h-36 w-full object-cover rounded-xl border border-neutral-200 dark:border-neutral-700" />
-                  ) : (
-                    <div className="h-36 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
-                      Not uploaded
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
