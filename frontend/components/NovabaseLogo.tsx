@@ -77,16 +77,25 @@ export default function NovabaseLogo({ size = 'md', className = '' }: NovabaseLo
         </svg>
       </motion.div>
       <motion.span
-        className={`${textSizes[size]} font-bold text-neutral-900 dark:text-neutral-100 tracking-tight lowercase`}
+        className={`${textSizes[size]} font-bold text-neutral-900 dark:text-neutral-100 tracking-tight`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        novabase
+        NexaChain
       </motion.span>
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
 
 
 

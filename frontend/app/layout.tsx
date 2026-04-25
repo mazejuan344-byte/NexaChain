@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/lib/theme'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Novabase - Secure Crypto Investing Made Simple',
+  title: 'NexaChain - Secure Crypto Investing Made Simple',
   description: 'Professional crypto investment broker platform',
   icons: {
     icon: '/icon.svg',
